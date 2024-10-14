@@ -1,0 +1,53 @@
+# Use the official Python image with version 3.11
+FROM python:3.11-slim
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Install necessary system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
+    wget \
+    curl \
+    && apt-get clean
+
+# Upgrade pip to the latest version
+RUN pip install --upgrade pip
+
+# Install PyTorch-related packages using the PyTorch index
+RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# Install transformers and accelerate from the default PyPI index
+RUN pip install transformers accelerate
+
+# Install uvicorn, protobuf and fastapi
+RUN pip install "uvicorn[standard]"
+RUN pip install protobuf==5.27.0-rc2
+RUN pip install fastapi
+
+# Download the model during the build process
+RUN python -c "\
+from transformers import Qwen2VLForConditionalGeneration, AutoProcessor; \
+model_id = 'Ertugrul/Qwen2-VL-7B-Captioner-Relaxed'; \
+Qwen2VLForConditionalGeneration.from_pretrained(model_id, torch_dtype='bfloat16', device_map='auto'); \
+AutoProcessor.from_pretrained(model_id)"
+
+# Copy the requirements file into the container
+COPY requirements.txt .
+
+# Install other dependencies from requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application code into the container
+COPY . .
+
+# Expose the port that FastAPI will run on
+EXPOSE 8000
+
+# Set the entry point to run the FastAPI application
+CMD ["uvicorn", "image_classification_ws_api:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+# Run the container with the following command: docker run --gpus all -it -p 8000:8000 image_classification_ws_api:latest

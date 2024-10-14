@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+message CaptionRequest {
+    string image_url = 1;
+    int32 max_new_tokens = 2;
+    float temperature = 3;
+    bool use_cache = 4;
+    int32 top_k = 5;
+}
+
+message CaptionResponse {
+    string caption = 1;
+}
